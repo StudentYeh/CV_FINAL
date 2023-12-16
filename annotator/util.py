@@ -31,7 +31,9 @@ def resize_image(input_image, resolution):
     H, W, C = input_image.shape
     H = float(H)
     W = float(W)
-    k = float(resolution) / min(H, W)
+    # original: only adjusting the smallest dimension of the image to 512
+    # k = float(resolution) / min(H, W)
+    k = float(resolution) / max(H, W)
     H *= k
     W *= k
     H = int(np.round(H / 64.0)) * 64
@@ -39,6 +41,34 @@ def resize_image(input_image, resolution):
     img = cv2.resize(input_image, (W, H), interpolation=cv2.INTER_LANCZOS4 if k > 1 else cv2.INTER_AREA)
     return img
 
+def resize_and_pad(img, size):
+    # Ensure the image is in RGBA color space
+    if img.shape[2] == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+
+    # Compute the aspect ratio of the image
+    scaled_img = resize_image(img, size)
+
+    H, W, C = scaled_img.shape
+
+    # Next, we'll pad the image to ensure it's (512,512)
+    if H != size:
+      left, right = 0, 0
+      # y axis need padding
+      pad_y = size - H
+      top = pad_y // 2
+      bottom = pad_y - top
+    else:
+      top, bottom = 0, 0
+      # x axis need padding
+      pad_x = size - W
+      left = pad_x //2
+      right = pad_x - left
+    
+    padded_img = cv2.copyMakeBorder(scaled_img, top, bottom, left, right, 
+                                    cv2.BORDER_CONSTANT, value=[0, 0, 0, 0])
+
+    return padded_img
 
 def nms(x, t, s):
     x = cv2.GaussianBlur(x.astype(np.float32), (0, 0), s)
